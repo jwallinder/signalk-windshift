@@ -10,13 +10,24 @@ module.exports = function (app) {
   var buffer = [];
   var data = [];
 
-  buffer_timeout_s = 10; //seconds
-  timeseries_timeout_s = 20 * 60; //20 mins
+  const DEFAULT_AVG_BUFFER = 10; //seconds
+  let buffer_timeout_s = DEFAULT_AVG_BUFFER;
+
+  const DEFAULT_MIN_MAX_BUFFER = 20; //mins
+  let timeseries_timeout_s = DEFAULT_MIN_MAX_BUFFER * 60;
 
   plugin.start = function (options, restartPlugin) {
     // Here we put our plugin logic
     app.debug("Plugin Windshift started");
     app.debug(`options: ${options}`);
+    app.debug(`options: ${JSON.stringify(options)}`);
+    app.debug("options:" + options);
+    app.debug("options:" + JSON.stringify(options));
+
+    buffer_timeout_s =
+      options.twd_buffer_time || buffer_timeout_s || DEFAULT_AVG_BUFFER;
+    timeseries_timeout_s =
+      options.min_max_calc_time || timeseries_timeout_s || DEFAULT_AVG_BUFFER;
 
     let localSubscription = {
       context: "*", // Get data for all contexts
@@ -39,7 +50,6 @@ module.exports = function (app) {
         delta.updates.forEach((u) => {
           app.debug(u);
           values = onWindDirectionTrue(u.timestamp, u.values[0].value);
-          app.debug("values: " + values);
           //values = values.concat(vals);
         });
 
@@ -172,6 +182,22 @@ module.exports = function (app) {
 
   plugin.schema = {
     // The plugin schema
+
+    type: "object",
+    required: ["some_string", "some_other_number"],
+    properties: {
+      twd_buffer_time: {
+        type: "number",
+        title: "How long an average for TWD is calculated (seconds)",
+        default: 10,
+      },
+      min_max_calc_time: {
+        type: "number",
+        title:
+          "How long time to keep TWD to calculate min and max from (minutes)",
+        default: 20,
+      },
+    },
   };
 
   return plugin;
