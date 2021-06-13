@@ -46,9 +46,11 @@ module.exports = function (app) {
         app.error("Error:" + subscriptionError);
       },
       (delta) => {
-        values = [];
+        values = {};
         delta.updates.forEach((u) => {
           app.debug(u);
+          value = u.values[0].value;
+          if (isNaN(value)) return;
           values = onWindDirectionTrue(u.timestamp, u.values[0].value);
           //values = values.concat(vals);
         });
@@ -63,7 +65,6 @@ module.exports = function (app) {
           ],
         };
 
-        app.debug("got values: " + JSON.stringify(values));
         app.debug("send delta: " + JSON.stringify(signalk_delta));
         app.handleMessage(plugin.id, signalk_delta);
       }
