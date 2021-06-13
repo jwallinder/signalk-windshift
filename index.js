@@ -11,7 +11,7 @@ module.exports = function (app) {
   var data = [];
 
   buffer_timeout_s = 10; //seconds
-  timeseries_timeout_s = 60;
+  timeseries_timeout_s = 20 * 60; //20 mins
 
   plugin.start = function (options, restartPlugin) {
     // Here we put our plugin logic
@@ -37,7 +37,7 @@ module.exports = function (app) {
       (delta) => {
         values = [];
         delta.updates.forEach((u) => {
-          //app.debug(u);
+          app.debug(u);
           vals = onWindDirectionTrue(u.timestamp, u.values[0].value);
           //app.debug("vals: " + vals);
           values = values.concat(vals);
@@ -73,7 +73,7 @@ module.exports = function (app) {
   function onWindDirectionTrue(time, twd_rad) {
     buffer.push([time, parseFloat(twd_rad)]);
 
-    console.log(buffer);
+    app.debug("buffer: " + buffer);
 
     if (Date.now() - Date.parse(buffer[0][0]) > buffer_timeout_s * 1000) {
       // https://math.stackexchange.com/a/1920805
@@ -100,6 +100,7 @@ module.exports = function (app) {
       buffer = [];
 
       data.push([time, avg_twd]);
+      app.debug("long term data: " + data);
 
       offset = data[0][1];
       //=if(C3>180,C3-360,if(C3<-180,mod(C3+360,360),C3))
