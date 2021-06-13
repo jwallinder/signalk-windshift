@@ -38,9 +38,9 @@ module.exports = function (app) {
         values = [];
         delta.updates.forEach((u) => {
           app.debug(u);
-          vals = onWindDirectionTrue(u.timestamp, u.values[0].value);
-          //app.debug("vals: " + vals);
-          values = values.concat(vals);
+          values = onWindDirectionTrue(u.timestamp, u.values[0].value);
+          app.debug("values: " + values);
+          //values = values.concat(vals);
         });
 
         let signalk_delta = {
@@ -48,7 +48,7 @@ module.exports = function (app) {
           updates: [
             {
               timestamp: new Date().toISOString(),
-              values: values,
+              ...values,
             },
           ],
         };
@@ -69,6 +69,27 @@ module.exports = function (app) {
     currentValue < min ? currentValue : min;
   const timeMapper = (datapoint) => datapoint[0];
   const twdMapper = (datapoint) => datapoint[1];
+
+  const meta = [
+    {
+      path: "environment.wind.windshift.max",
+      value: {
+        units: "rad",
+        description: "Windshift max angle calculated from the buffering period",
+        displayName: "Windshift max angle",
+        shortName: "Windshift max angle",
+      },
+    },
+    {
+      path: "environment.wind.windshift.min",
+      value: {
+        units: "rad",
+        description: "Windshift min angle calculated from the buffering period",
+        displayName: "Windshift min angle",
+        shortName: "Windshift min angle",
+      },
+    },
+  ];
 
   function onWindDirectionTrue(time, twd_rad) {
     buffer.push([time, parseFloat(twd_rad)]);
@@ -136,12 +157,12 @@ module.exports = function (app) {
     app.debug("twd: " + twd_rad);
     //max = parseFloat(twd_rad) + 0.5;
     //min = parseFloat(twd_rad) - 0.5;
-    msg = [
+    values = [
       { path: "environment.wind.windshift.max", value: max },
       { path: "environment.wind.windshift.min", value: min },
     ];
-    app.debug("return msg: " + msg);
-    return msg;
+
+    return { values: values, meta: meta };
   }
 
   plugin.stop = function () {
