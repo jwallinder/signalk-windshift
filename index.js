@@ -53,20 +53,21 @@ module.exports = function (app) {
           if (isNaN(value)) return;
           values = onWindDirectionTrue(u.timestamp, u.values[0].value);
           //values = values.concat(vals);
+          let signalk_delta = {
+            context: "vessels." + app.selfId,
+            updates: [
+              {
+                timestamp: new Date().toISOString(),
+                ...values,
+              },
+            ],
+          };
+
+          app.debug("send delta: " + JSON.stringify(signalk_delta));
+          app.debug("values: " + JSON.stringify(values));
+
+          if (values) app.handleMessage(plugin.id, signalk_delta);
         });
-
-        let signalk_delta = {
-          context: "vessels." + app.selfId,
-          updates: [
-            {
-              timestamp: new Date().toISOString(),
-              ...values,
-            },
-          ],
-        };
-
-        app.debug("send delta: " + JSON.stringify(signalk_delta));
-        app.handleMessage(plugin.id, signalk_delta);
       }
     );
   };
@@ -163,17 +164,17 @@ module.exports = function (app) {
         filter = Date.now() - Date.parse(time) < timeseries_timeout_s * 1000;
         return filter;
       });
+
+      app.debug("twd: " + twd_rad);
+      //max = parseFloat(twd_rad) + 0.5;
+      //min = parseFloat(twd_rad) - 0.5;
+      values = [
+        { path: "environment.wind.windshift.max", value: max },
+        { path: "environment.wind.windshift.min", value: min },
+      ];
+
+      return { values: values, meta: meta };
     }
-
-    app.debug("twd: " + twd_rad);
-    //max = parseFloat(twd_rad) + 0.5;
-    //min = parseFloat(twd_rad) - 0.5;
-    values = [
-      { path: "environment.wind.windshift.max", value: max },
-      { path: "environment.wind.windshift.min", value: min },
-    ];
-
-    return { values: values, meta: meta };
   }
 
   plugin.stop = function () {
