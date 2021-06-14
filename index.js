@@ -63,10 +63,10 @@ module.exports = function (app) {
             ],
           };
 
-          app.debug("send delta: " + JSON.stringify(signalk_delta));
-          app.debug("values: " + JSON.stringify(values));
-
-          if (values) app.handleMessage(plugin.id, signalk_delta);
+          if (values) {
+            app.debug("send delta: " + JSON.stringify(signalk_delta));
+            app.handleMessage(plugin.id, signalk_delta);
+          }
         });
       }
     );
