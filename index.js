@@ -8,11 +8,6 @@ module.exports = function (app) {
   plugin.name = "Windshift";
   plugin.description = "Plugin to analyze the windshift";
 
-  var unsubscribes = [];
-
-  var buffer = [];
-  var data = [];
-
   const DEFAULT_AVG_BUFFER = 10; //seconds
   let buffer_timeout_s = DEFAULT_AVG_BUFFER;
 
@@ -24,60 +19,47 @@ module.exports = function (app) {
     app.debug("Plugin Windshift started");
     app.debug("options:" + JSON.stringify(options));
 
-    windshiftAnalysis.logger(app.debug);
-
     buffer_timeout_s =
       options.twd_buffer_time || buffer_timeout_s || DEFAULT_AVG_BUFFER;
     timeseries_timeout_s =
       options.min_max_calc_time || timeseries_timeout_s || DEFAULT_AVG_BUFFER;
 
-    let localSubscription = {
-      context: "*", // Get data for all contexts
-      subscribe: [
-        {
-          path: "environment.wind.directionTrue",
-          period: 500, // Every 5000ms
-        },
-      ],
-    };
+    app.debug("buffers: ", buffer_timeout_s, timeseries_timeout_s);
+    windshiftAnalysis.logger(app.debug);
+    windshiftAnalysis.config({
+      buffer_timeout_s: 11,
+      timeseries_timeout_s: 222,
+    });
 
-    app.subscriptionmanager.subscribe(
-      localSubscription,
-      unsubscribes,
-      (subscriptionError) => {
-        app.error("Error:" + subscriptionError);
-      },
-      (delta) => {
-        values = {};
-        delta.updates.forEach((u) => {
-          app.debug(u);
-          value = u.values[0].value;
-          if (isNaN(value)) return;
+    app.streambundle
+      .getSelfBus("environment.wind.directionTrue")
+      .forEach((stream_value) => {
+        app.debug("incoming stream value", stream_value);
+        value = stream_value.value;
+        if (isNaN(value)) return;
 
-          windshiftAnalysis.appendWindDirection(
-            u.values[0].value,
-            u.timestamp,
-            ({ timestamp, maxTWD, minTWD }) => {
-              //values = values.concat(vals);
-              let signalk_delta = {
-                context: "vessels." + app.selfId,
-                updates: [
-                  {
-                    timestamp: timestamp,
-                    values: [
-                      { path: "environment.wind.windshift.max", value: maxTWD },
-                      { path: "environment.wind.windshift.min", value: minTWD },
-                    ],
-                  },
-                ],
-              };
-              app.debug("send delta: " + JSON.stringify(signalk_delta));
-              app.handleMessage(plugin.id, signalk_delta);
-            }
-          );
-        });
-      }
-    );
+        windshiftAnalysis.appendWindDirection(
+          value,
+          stream_value.timestamp,
+          ({ timestamp, maxTWD, minTWD }) => {
+            //values = values.concat(vals);
+            let signalk_delta = {
+              context: "vessels." + app.selfId,
+              updates: [
+                {
+                  timestamp: timestamp,
+                  values: [
+                    { path: "environment.wind.windshift.max", value: maxTWD },
+                    { path: "environment.wind.windshift.min", value: minTWD },
+                  ],
+                },
+              ],
+            };
+            app.debug("send delta: " + JSON.stringify(signalk_delta));
+            app.handleMessage(plugin.id, signalk_delta);
+          }
+        );
+      });
   };
 
   const meta = [
@@ -110,7 +92,7 @@ module.exports = function (app) {
     // The plugin schema
 
     type: "object",
-    required: ["some_string", "some_other_number"],
+    required: ["twd_buffer_time", "min_max_calc_time"],
     properties: {
       twd_buffer_time: {
         type: "number",

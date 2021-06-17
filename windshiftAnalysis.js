@@ -6,6 +6,7 @@ let buffer_timeout_s = DEFAULT_AVG_BUFFER;
 const DEFAULT_MIN_MAX_BUFFER = 20; //mins
 let timeseries_timeout_s = DEFAULT_MIN_MAX_BUFFER * 60;
 var debuglogger;
+
 const debug = (msg) => {
   if (debuglogger) debuglogger(msg);
 };
@@ -20,15 +21,24 @@ const twdMapper = (datapoint) => datapoint[1];
 const windshiftAnalysis = {
   logger: (logger) => (debuglogger = logger),
 
-  appendWindDirection: (twd, timestamp, update) => {
-    timestamp = timestamp || Date.now();
-    buffer.push([timestamp, twd]);
-    console.log("BUFFER: " + buffer);
-    buffer.push([timestamp, twd]);
+  config: (a) => {
+    debug("incoming config: " + a);
+    debug(a);
+    //{ buffer_timeout_s, timeseries_timeout_s }
+    debug("buffer_timeout_s: " + a.buffer_timeout_s);
+    debug("timeseries_timeout_s: " + a.timeseries_timeout_s);
+    this.buffer_timeout_s = a.buffer_timeout_s;
+    this.timeseries_timeout_s = a.timeseries_timeout_s;
+    debug("this.buffer_timeout_s: " + this.buffer_timeout_s);
+    debug("this.timeseries_timeout_s: " + this.timeseries_timeout_s);
+  },
 
-    debug("buffer: " + buffer);
+  appendWindDirection: (twd, timestamp_in, update) => {
+    timestamp = Date.parse(timestamp_in) || Date.now();
+    buffer.push([timestamp, twd]);
+    debug("BUFFER: " + buffer);
 
-    if (Date.now() - Date.parse(buffer[0][0]) > buffer_timeout_s * 1000) {
+    if (timestamp - buffer[0][0] > buffer_timeout_s * 1000) {
       // https://math.stackexchange.com/a/1920805
       //u_east = mean(sin(WD * pi/180))
       //u_north = mean(cos((WD * pi) / 180));
@@ -81,13 +91,13 @@ const windshiftAnalysis = {
       debug(data);
       data = data.filter((datapoint) => {
         let time = datapoint[0];
-        filter = Date.now() - Date.parse(time) < timeseries_timeout_s * 1000;
+        filter = timestamp - Date.parse(time) < timeseries_timeout_s * 1000;
         return filter;
       });
 
       debug("twd: " + twd);
 
-      update({ timestamp: timestamp, maxTWD: max, minTWD: min });
+      if (update) update({ timestamp: timestamp_in, maxTWD: max, minTWD: min });
     }
   },
 };
