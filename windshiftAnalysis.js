@@ -21,24 +21,20 @@ const twdMapper = (datapoint) => datapoint[1];
 const windshiftAnalysis = {
   logger: (logger) => (debuglogger = logger),
 
-  config: (a) => {
-    debug("incoming config: " + a);
-    debug(a);
-    //{ buffer_timeout_s, timeseries_timeout_s }
-    debug("buffer_timeout_s: " + a.buffer_timeout_s);
-    debug("timeseries_timeout_s: " + a.timeseries_timeout_s);
-    this.buffer_timeout_s = a.buffer_timeout_s;
-    this.timeseries_timeout_s = a.timeseries_timeout_s;
-    debug("this.buffer_timeout_s: " + this.buffer_timeout_s);
-    debug("this.timeseries_timeout_s: " + this.timeseries_timeout_s);
+  config: (config) => {
+    debug("incoming config: " + JSON.stringify(config));
+    buffer_timeout_s = config.buffer_timeout_s || DEFAULT_AVG_BUFFER;
+    timeseries_timeout_s =
+      config.timeseries_timeout_s || DEFAULT_MIN_MAX_BUFFER;
   },
 
   appendWindDirection: (twd, timestamp_in, update) => {
     timestamp = Date.parse(timestamp_in) || Date.now();
     buffer.push([timestamp, twd]);
-    debug("BUFFER: " + buffer);
-
-    if (timestamp - buffer[0][0] > buffer_timeout_s * 1000) {
+    //debug("BUFFER: " + buffer);
+    timediff = timestamp - buffer[0][0];
+    debug("timediff: " + timediff / 1000);
+    if (timediff > buffer_timeout_s * 1000) {
       // https://math.stackexchange.com/a/1920805
       //u_east = mean(sin(WD * pi/180))
       //u_north = mean(cos((WD * pi) / 180));
@@ -58,15 +54,14 @@ const windshiftAnalysis = {
       avg_twd = Math.atan2(u_east, u_north);
 
       avg_twd = (2 * Math.PI + avg_twd) % (2 * Math.PI);
-      debug(`avg_twd: ${avg_twd} => ${(avg_twd * 180) / Math.PI}`);
+      debug(`avg_twd: ${avg_twd}rad => ${(avg_twd * 180) / Math.PI}deg`);
 
       buffer = [];
 
       data.push([timestamp, avg_twd]);
-      debug("long term data: " + data);
 
       offset = data[0][1];
-      //=if(C3>180,C3-360,if(C3<-180,mod(C3+360,360),C3))
+
       diff_array = data
         .map(twdMapper)
         .map((twd) => {
@@ -91,11 +86,9 @@ const windshiftAnalysis = {
       debug(data);
       data = data.filter((datapoint) => {
         let time = datapoint[0];
-        filter = timestamp - Date.parse(time) < timeseries_timeout_s * 1000;
+        filter = timestamp - time < timeseries_timeout_s * 1000;
         return filter;
       });
-
-      debug("twd: " + twd);
 
       if (update) update({ timestamp: timestamp_in, maxTWD: max, minTWD: min });
     }

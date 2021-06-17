@@ -24,11 +24,13 @@ module.exports = function (app) {
     timeseries_timeout_s =
       options.min_max_calc_time || timeseries_timeout_s || DEFAULT_AVG_BUFFER;
 
+    timeseries_timeout_s *= 60;
+
     app.debug("buffers: ", buffer_timeout_s, timeseries_timeout_s);
     windshiftAnalysis.logger(app.debug);
     windshiftAnalysis.config({
-      buffer_timeout_s: 11,
-      timeseries_timeout_s: 222,
+      buffer_timeout_s,
+      timeseries_timeout_s,
     });
 
     app.streambundle
@@ -43,6 +45,8 @@ module.exports = function (app) {
           stream_value.timestamp,
           ({ timestamp, maxTWD, minTWD }) => {
             //values = values.concat(vals);
+            app.debug("meta: " + JSON.stringify(meta));
+
             let signalk_delta = {
               context: "vessels." + app.selfId,
               updates: [
@@ -52,6 +56,7 @@ module.exports = function (app) {
                     { path: "environment.wind.windshift.max", value: maxTWD },
                     { path: "environment.wind.windshift.min", value: minTWD },
                   ],
+                  meta,
                 },
               ],
             };
